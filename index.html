@@ -89,10 +89,19 @@
   th, td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--line); }
   th { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
   td.r { color: var(--muted); font-size: 13px; width: 32px; }
-  td.cell { cursor: pointer; border-radius: 8px; }
-  td.cell:active { background: var(--gold-soft); }
-  td.cell.qw { background: var(--gold-soft); font-weight: 700; }
-  td.cell.qw::after { content: " ★"; color: var(--gold); }
+  td.cell { padding: 4px; }
+  .score-btn {
+    width: 100%; min-height: 44px; padding: 6px 8px; border-radius: 10px;
+    background: var(--bg); color: var(--ink); border: 1px dashed var(--line);
+    font-weight: 600; font-variant-numeric: tabular-nums;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .score-btn::after { content: "✎"; font-size: 12px; color: var(--muted); font-weight: 400; }
+  .score-btn:active { background: var(--gold-soft); border-style: solid; border-color: var(--gold); }
+  .score-btn.qw { background: var(--gold-soft); border-color: var(--gold); font-weight: 800; }
+  .score-btn.qw .star { color: var(--gold); }
+  .score-btn.flash { animation: flash 1s ease-out; }
+  @keyframes flash { from { box-shadow: 0 0 0 3px var(--gold); } to { box-shadow: 0 0 0 0 transparent; } }
   td.empty { color: var(--line); }
   .hint { text-align: center; margin-top: 8px; }
 
@@ -151,7 +160,7 @@
     <div class="card">
       <h2>Scorecard</h2>
       <div class="table-wrap"><table id="table"></table></div>
-      <p class="muted hint" id="tableHint">Tap any score to edit it.</p>
+      <p class="muted hint" id="tableHint">✎ Tap any score to fix it — totals update automatically.</p>
     </div>
 
     <button id="totalBtn" style="width:100%">Calculate total score</button>
@@ -162,6 +171,11 @@
     <div class="card">
       <h2>Final scores</h2>
       <div id="standings"></div>
+    </div>
+    <div class="card">
+      <h2>Scorecard</h2>
+      <div class="table-wrap"><table id="resultsTable"></table></div>
+      <p class="muted hint">✎ Spotted a mistake? Tap any score to fix it — the final scores update.</p>
     </div>
     <div class="row">
       <button id="backBtn" class="secondary grow">Back to scorecard</button>
@@ -251,7 +265,12 @@
     $('undoBtn').disabled = state.turns.length === 0;
     syncQw($('qwInput'), $('qwLabel'));
 
-    // Table: rows = rounds, cols = players
+    renderTable($('table'));
+    $('tableHint').classList.toggle('hidden', !state.turns.length);
+  }
+
+  // Scorecard: rows = rounds, cols = players. Every score is a button that opens the editor.
+  function renderTable(table) {
     const rounds = Math.ceil(state.turns.length / n());
     let html = '<thead><tr><th>#</th>' + state.players.map(p => `<th>${esc(p)}</th>`).join('') + '</tr></thead><tbody>';
     for (let r = 0; r < rounds; r++) {
@@ -259,15 +278,17 @@
       for (let p = 0; p < n(); p++) {
         const idx = r * n() + p;
         const t = state.turns[idx];
-        html += t ? `<td class="cell ${t.qw ? 'qw' : ''}" data-i="${idx}">${turnPoints(t)}</td>` : `<td class="empty">–</td>`;
+        html += t
+          ? `<td class="cell"><button type="button" class="score-btn ${t.qw ? 'qw' : ''}" data-i="${idx}"
+               aria-label="Edit ${esc(state.players[p])}'s round ${r + 1} score">${turnPoints(t)}${t.qw ? '<span class="star">★</span>' : ''}</button></td>`
+          : `<td class="empty">–</td>`;
       }
       html += '</tr>';
     }
     if (!rounds) html += `<tr><td colspan="${n() + 1}" class="muted">No scores yet</td></tr>`;
     html += '</tbody>';
-    $('table').innerHTML = html;
-    $('tableHint').classList.toggle('hidden', !rounds);
-    $('table').querySelectorAll('td.cell').forEach(td => td.onclick = () => openEdit(+td.dataset.i));
+    table.innerHTML = html;
+    table.querySelectorAll('.score-btn').forEach(b => b.onclick = () => openEdit(+b.dataset.i));
   }
 
   function syncQw(input, label) { label.classList.toggle('on', input.checked); }
@@ -311,6 +332,7 @@
     if (isNaN(v) || v < 0) { e.preventDefault(); $('editScore').focus(); return; }
     state.turns[editingIndex] = { score: v, qw: $('editQw').checked };
     save(); render();
+    document.querySelectorAll(`.score-btn[data-i="${editingIndex}"]`).forEach(b => b.classList.add('flash'));
   });
 
   // ---------- Results ----------
@@ -331,11 +353,12 @@
         <div class="muted">${o.q} Qwirkle${o.q === 1 ? '' : 's'}</div></div>
         <div class="pts">${o.s}</div></div>`;
     }).join('');
+    renderTable($('resultsTable'));
   }
 
   // ---------- New game ----------
   function newGame() {
-    if (state.phase === 'game' && state.turns.length && !confirm('Start a new game? Current scores will be cleared.')) return;
+    if (state.turns.length && !confirm('Start a new game? Current scores will be cleared.')) return;
     const players = state.players.slice();
     state = freshState();
     state.players = players.length ? players : ['', ''];
