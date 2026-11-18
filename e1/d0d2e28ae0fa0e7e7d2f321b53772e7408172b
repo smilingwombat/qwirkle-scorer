@@ -1,0 +1,19 @@
+index.html
+  s_f00fa39283772c::t_35e649548ba2fe 1-359
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e1d0d2e28ae0fa0e7e7d2f321b53772e7408172b",
+  "prompts": {},
+  "sessions": {
+    "s_f00fa39283772c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "301003d1-9d5a-4f5a-8f57-314f8bb24ced",
+        "model": "unknown"
+      },
+      "human_author": "Montgomery, Greg <greg.montgomery@here.com>"
+    }
+  }
+}
