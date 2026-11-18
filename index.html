@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2a44">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Qwirkle Scorekeeper</title>
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --card: #ffffff;
+    --ink: #1f2430;
+    --muted: #6b7080;
+    --line: #e3ded3;
+    --accent: #1f2a44;
+    --accent-ink: #ffffff;
+    --gold: #e0a100;
+    --gold-soft: #fff4d6;
+    --danger: #c0392b;
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161c;
+      --card: #1e2129;
+      --ink: #eceef3;
+      --muted: #9aa0ad;
+      --line: #2e323d;
+      --accent: #f2c14e;
+      --accent-ink: #14161c;
+      --gold: #f2c14e;
+      --gold-soft: #3a3220;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+  main { max-width: 560px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 16px 0 8px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.01em; }
+  h1 .dots { display: inline-flex; gap: 3px; margin-right: 8px; vertical-align: middle; }
+  h1 .dots i { width: 9px; height: 9px; border-radius: 2px; display: block; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin: 12px 0; }
+  .hidden { display: none !important; }
+  button {
+    font: inherit; border: 0; border-radius: 12px; padding: 14px 16px; cursor: pointer;
+    background: var(--accent); color: var(--accent-ink); font-weight: 600; min-height: 48px;
+  }
+  button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); }
+  button.small { padding: 8px 12px; min-height: 36px; font-size: 14px; }
+  button:disabled { opacity: .4; cursor: default; }
+  .row { display: flex; gap: 10px; align-items: center; }
+  .stack > * + * { margin-top: 10px; }
+  .grow { flex: 1; }
+  input[type=text], input[type=number] {
+    font: inherit; width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 48px;
+  }
+  input[type=number] { font-size: 28px; font-weight: 700; text-align: center; }
+  input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .qw-toggle {
+    display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--line); cursor: pointer; user-select: none; min-height: 52px;
+  }
+  .qw-toggle input { width: 24px; height: 24px; accent-color: var(--gold); margin: 0; }
+  .qw-toggle.on { background: var(--gold-soft); border-color: var(--gold); }
+  .turn-name { font-size: 24px; font-weight: 700; }
+  .muted { color: var(--muted); font-size: 14px; }
+
+  /* Player chips */
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .chip { flex: 1 0 auto; min-width: 72px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; text-align: center; }
+  .chip.active { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold) inset; }
+  .chip .n { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px; }
+  .chip .s { font-size: 20px; font-weight: 700; }
+
+  /* Score table */
+  .table-wrap { overflow-x: auto; margin: 0 -4px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 6px; text-align: center; border-bottom: 1px solid var(--line); }
+  th { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.r { color: var(--muted); font-size: 13px; width: 32px; }
+  td.cell { cursor: pointer; border-radius: 8px; }
+  td.cell:active { background: var(--gold-soft); }
+  td.cell.qw { background: var(--gold-soft); font-weight: 700; }
+  td.cell.qw::after { content: " ★"; color: var(--gold); }
+  td.empty { color: var(--line); }
+  .hint { text-align: center; margin-top: 8px; }
+
+  /* Results */
+  .standing { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .standing:last-child { border-bottom: 0; }
+  .place { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: var(--bg); }
+  .standing.first .place { background: var(--gold); color: #1f2430; }
+  .standing .pts { font-size: 24px; font-weight: 800; }
+
+  /* Dialog */
+  dialog { border: 0; border-radius: var(--radius); padding: 20px; width: min(92vw, 400px); background: var(--card); color: var(--ink); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .setting { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .setting input { width: 20px; height: 20px; accent-color: var(--gold); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><span class="dots"><i style="background:#e74c3c"></i><i style="background:#f39c12"></i><i style="background:#27ae60"></i><i style="background:#2e86de"></i></span>Qwirkle Score</h1>
+    <button id="newGameBtn" class="secondary small hidden">New game</button>
+  </header>
+
+  <!-- SETUP -->
+  <section id="setup">
+    <div class="card stack">
+      <h2>Players</h2>
+      <div id="playerInputs" class="stack"></div>
+      <button id="addPlayerBtn" class="secondary">+ Add player</button>
+    </div>
+    <div class="card stack">
+      <label class="setting"><input type="checkbox" id="autoBonus"> Add the 6‑point Qwirkle bonus automatically when the box is ticked</label>
+      <p class="muted" style="margin:0">Leave this off if you'll type the score with the bonus already included.</p>
+    </div>
+    <button id="startBtn" style="width:100%">Start game</button>
+  </section>
+
+  <!-- GAME -->
+  <section id="game" class="hidden">
+    <div id="chips" class="chips"></div>
+
+    <div id="entryCard" class="card stack">
+      <div class="row">
+        <div class="grow">
+          <div class="muted" id="roundLabel">Round 1</div>
+          <div class="turn-name" id="turnName">Player</div>
+        </div>
+        <button id="undoBtn" class="secondary small" disabled>Undo</button>
+      </div>
+      <input type="number" id="scoreInput" inputmode="numeric" pattern="[0-9]*" min="0" placeholder="0" aria-label="Score">
+      <label class="qw-toggle" id="qwLabel"><input type="checkbox" id="qwInput"> <span><strong>Qwirkle!</strong> <span class="muted">(completed a line of 6)</span></span></label>
+      <button id="addBtn" style="width:100%">Add score</button>
+    </div>
+
+    <div class="card">
+      <h2>Scorecard</h2>
+      <div class="table-wrap"><table id="table"></table></div>
+      <p class="muted hint" id="tableHint">Tap any score to edit it.</p>
+    </div>
+
+    <button id="totalBtn" style="width:100%">Calculate total score</button>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="results" class="hidden">
+    <div class="card">
+      <h2>Final scores</h2>
+      <div id="standings"></div>
+    </div>
+    <div class="row">
+      <button id="backBtn" class="secondary grow">Back to scorecard</button>
+      <button id="newGameBtn2" class="grow">New game</button>
+    </div>
+  </section>
+</main>
+
+<!-- EDIT DIALOG -->
+<dialog id="editDialog">
+  <form method="dialog" class="stack" id="editForm">
+    <h2 id="editTitle" style="margin:0">Edit score</h2>
+    <input type="number" id="editScore" inputmode="numeric" pattern="[0-9]*" min="0" aria-label="Score">
+    <label class="qw-toggle" id="editQwLabel"><input type="checkbox" id="editQw"> <strong>Qwirkle!</strong></label>
+    <div class="row">
+      <button type="button" class="secondary grow" id="editCancel">Cancel</button>
+      <button type="submit" class="grow" id="editSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const KEY = 'qwirkle-scorer-v1';
+  const $ = id => document.getElementById(id);
+  let state = load() || freshState();
+  let editingIndex = null;
+
+  function freshState() {
+    return { phase: 'setup', players: ['', ''], turns: [], autoBonus: false };
+  }
+  function load() {
+    try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {}
+  }
+
+  const n = () => state.players.length;
+  const turnPoints = t => t.score + (state.autoBonus && t.qw ? 6 : 0);
+  function totals() {
+    const tot = state.players.map(() => 0);
+    const qws = state.players.map(() => 0);
+    state.turns.forEach((t, i) => { tot[i % n()] += turnPoints(t); if (t.qw) qws[i % n()]++; });
+    return { tot, qws };
+  }
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  // ---------- Setup ----------
+  function renderSetup() {
+    const wrap = $('playerInputs');
+    wrap.innerHTML = '';
+    state.players.forEach((name, i) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `<input type="text" placeholder="Player ${i + 1}" value="${esc(name)}" aria-label="Player ${i + 1} name" autocomplete="off">` +
+        (state.players.length > 1 ? `<button class="danger small" aria-label="Remove player">✕</button>` : '');
+      row.querySelector('input').addEventListener('input', e => { state.players[i] = e.target.value; save(); });
+      const rm = row.querySelector('button');
+      if (rm) rm.addEventListener('click', () => { state.players.splice(i, 1); save(); renderSetup(); });
+      wrap.appendChild(row);
+    });
+    $('addPlayerBtn').disabled = state.players.length >= 6;
+    $('autoBonus').checked = state.autoBonus;
+  }
+  $('addPlayerBtn').onclick = () => { state.players.push(''); save(); renderSetup(); };
+  $('autoBonus').onchange = e => { state.autoBonus = e.target.checked; save(); };
+  $('startBtn').onclick = () => {
+    state.players = state.players.map((p, i) => p.trim() || `Player ${i + 1}`);
+    state.turns = [];
+    state.phase = 'game';
+    save(); render();
+    $('scoreInput').focus();
+  };
+
+  // ---------- Game ----------
+  function renderGame() {
+    const { tot } = totals();
+    const cur = state.turns.length % n();
+    const round = Math.floor(state.turns.length / n()) + 1;
+
+    $('chips').innerHTML = state.players.map((p, i) =>
+      `<div class="chip ${i === cur ? 'active' : ''}"><div class="n">${esc(p)}</div><div class="s">${tot[i]}</div></div>`).join('');
+
+    $('roundLabel').textContent = `Round ${round} · up next`;
+    $('turnName').textContent = state.players[cur];
+    $('undoBtn').disabled = state.turns.length === 0;
+    syncQw($('qwInput'), $('qwLabel'));
+
+    // Table: rows = rounds, cols = players
+    const rounds = Math.ceil(state.turns.length / n());
+    let html = '<thead><tr><th>#</th>' + state.players.map(p => `<th>${esc(p)}</th>`).join('') + '</tr></thead><tbody>';
+    for (let r = 0; r < rounds; r++) {
+      html += `<tr><td class="r">${r + 1}</td>`;
+      for (let p = 0; p < n(); p++) {
+        const idx = r * n() + p;
+        const t = state.turns[idx];
+        html += t ? `<td class="cell ${t.qw ? 'qw' : ''}" data-i="${idx}">${turnPoints(t)}</td>` : `<td class="empty">–</td>`;
+      }
+      html += '</tr>';
+    }
+    if (!rounds) html += `<tr><td colspan="${n() + 1}" class="muted">No scores yet</td></tr>`;
+    html += '</tbody>';
+    $('table').innerHTML = html;
+    $('tableHint').classList.toggle('hidden', !rounds);
+    $('table').querySelectorAll('td.cell').forEach(td => td.onclick = () => openEdit(+td.dataset.i));
+  }
+
+  function syncQw(input, label) { label.classList.toggle('on', input.checked); }
+  $('qwInput').onchange = () => syncQw($('qwInput'), $('qwLabel'));
+  $('editQw').onchange = () => syncQw($('editQw'), $('editQwLabel'));
+
+  function addScore() {
+    const raw = $('scoreInput').value.trim();
+    const score = raw === '' ? 0 : parseInt(raw, 10);
+    if (isNaN(score) || score < 0) { $('scoreInput').focus(); return; }
+    state.turns.push({ score, qw: $('qwInput').checked });
+    $('scoreInput').value = '';
+    $('qwInput').checked = false;
+    save(); renderGame();
+    $('scoreInput').focus();
+  }
+  $('addBtn').onclick = addScore;
+  $('scoreInput').addEventListener('keydown', e => { if (e.key === 'Enter') addScore(); });
+
+  $('undoBtn').onclick = () => {
+    if (!state.turns.length) return;
+    const last = state.turns[state.turns.length - 1];
+    if (!confirm(`Remove the last score (${last.score}${last.qw ? ' ★' : ''})?`)) return;
+    state.turns.pop(); save(); renderGame();
+  };
+
+  // ---------- Edit ----------
+  function openEdit(i) {
+    editingIndex = i;
+    const t = state.turns[i];
+    $('editTitle').textContent = `${state.players[i % n()]} · Round ${Math.floor(i / n()) + 1}`;
+    $('editScore').value = t.score;
+    $('editQw').checked = t.qw;
+    syncQw($('editQw'), $('editQwLabel'));
+    $('editDialog').showModal();
+    $('editScore').select();
+  }
+  $('editCancel').onclick = () => $('editDialog').close();
+  $('editForm').addEventListener('submit', e => {
+    const v = parseInt($('editScore').value, 10);
+    if (isNaN(v) || v < 0) { e.preventDefault(); $('editScore').focus(); return; }
+    state.turns[editingIndex] = { score: v, qw: $('editQw').checked };
+    save(); render();
+  });
+
+  // ---------- Results ----------
+  $('totalBtn').onclick = () => { state.phase = 'results'; save(); render(); window.scrollTo(0, 0); };
+  $('backBtn').onclick = () => { state.phase = 'game'; save(); render(); };
+
+  function renderResults() {
+    const { tot, qws } = totals();
+    const order = state.players.map((p, i) => ({ p, s: tot[i], q: qws[i] })).sort((a, b) => b.s - a.s);
+    const top = order[0]?.s;
+    let place = 0, prev = null;
+    $('standings').innerHTML = order.map((o, k) => {
+      if (o.s !== prev) place = k + 1;
+      prev = o.s;
+      return `<div class="standing ${o.s === top ? 'first' : ''}">
+        <div class="place">${place}</div>
+        <div class="grow"><div><strong>${esc(o.p)}</strong>${o.s === top ? ' 🏆' : ''}</div>
+        <div class="muted">${o.q} Qwirkle${o.q === 1 ? '' : 's'}</div></div>
+        <div class="pts">${o.s}</div></div>`;
+    }).join('');
+  }
+
+  // ---------- New game ----------
+  function newGame() {
+    if (state.phase === 'game' && state.turns.length && !confirm('Start a new game? Current scores will be cleared.')) return;
+    const players = state.players.slice();
+    state = freshState();
+    state.players = players.length ? players : ['', ''];
+    state.autoBonus = load()?.autoBonus || false;
+    save(); render();
+  }
+  $('newGameBtn').onclick = newGame;
+  $('newGameBtn2').onclick = newGame;
+
+  function render() {
+    ['setup', 'game', 'results'].forEach(s => $(s).classList.toggle('hidden', state.phase !== s));
+    $('newGameBtn').classList.toggle('hidden', state.phase === 'setup');
+    if (state.phase === 'setup') renderSetup();
+    if (state.phase === 'game') renderGame();
+    if (state.phase === 'results') renderResults();
+  }
+  render();
+})();
+</script>
+</body>
+</html>
