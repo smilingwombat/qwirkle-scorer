@@ -1,0 +1,19 @@
+index.html
+  s_f00fa39283772c::t_d776dc22340954 92-104,163,175-179,268-273,281-284,290-291,335,356,361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "32ed1b7cf006ef83b3a89fe6cdcd526cf3405f33",
+  "prompts": {},
+  "sessions": {
+    "s_f00fa39283772c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "301003d1-9d5a-4f5a-8f57-314f8bb24ced",
+        "model": "unknown"
+      },
+      "human_author": "Montgomery, Greg <greg.montgomery@here.com>"
+    }
+  }
+}
